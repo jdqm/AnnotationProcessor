@@ -36,10 +36,16 @@ public class BindingProcessor extends AbstractProcessor {
         for (Element element : roundEnvironment.getRootElements()) {
             String packageStr = element.getEnclosingElement().toString();
             String classStr = element.getSimpleName().toString();
+
+            //要生成.java文件的类名：com.example.annotationprocessor.MainActivityBinding
             ClassName className = ClassName.get(packageStr, classStr + "Binding");
+
+            //构造器 public MainActivityBinding(MainActivity activity
             MethodSpec.Builder constructorBuilder = MethodSpec.constructorBuilder()
                     .addModifiers(Modifier.PUBLIC)
                     .addParameter(ClassName.get(packageStr, classStr), "activity");
+
+            //标记类中是否有@BindView注解修饰字段，如果没有就没必要生成类了
             boolean hasBinding = false;
 
             for (Element enclosedElement : element.getEnclosedElements()) {
@@ -47,12 +53,17 @@ public class BindingProcessor extends AbstractProcessor {
                     BindView bindView = enclosedElement.getAnnotation(BindView.class);
                     if (bindView != null) {
                         hasBinding = true;
+
+                        //在构造器内添加代码段
+                        //activity.textView1 = activity.findViewById(2131231096);
+                        //activity.textView2 = activity.findViewById(2131231097);
                         constructorBuilder.addStatement("activity.$N = activity.findViewById($L)",
                                 enclosedElement.getSimpleName(), bindView.value());
                     }
                 }
             }
 
+            //生成 com.example.annotationprocessor.MainActivityBinding 类
             TypeSpec builtClass = TypeSpec.classBuilder(className)
                     .addModifiers(Modifier.PUBLIC)
                     .addMethod(constructorBuilder.build())
@@ -60,6 +71,7 @@ public class BindingProcessor extends AbstractProcessor {
 
             if (hasBinding) {
                 try {
+                    //生成 MainActivityBinding.java文件
                     JavaFile.builder(packageStr, builtClass)
                             .build().writeTo(filer);
                 } catch (IOException e) {
